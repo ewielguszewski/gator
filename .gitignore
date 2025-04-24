@@ -1,1 +1,3 @@
 .gatorconfig.json
+go.sum
+internal/
