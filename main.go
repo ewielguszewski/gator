@@ -43,6 +43,9 @@ func main() {
 	cmds.register("register", handlerRegister)
 	cmds.register("reset", handlerReset)
 	cmds.register("users", handlerGetUsers)
+	cmds.register("agg", handlerAgg)
+	cmds.register("addfeed", handlerAddFeed)
+	cmds.register("feeds", handlerFeeds)
 
 	args := os.Args
 
@@ -60,6 +63,5 @@ func main() {
 		return
 	}
 	fmt.Println("Command executed successfully")
-	fmt.Printf("Current config: %+v\n", programState.cfg)
 
 }
