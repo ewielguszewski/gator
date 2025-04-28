@@ -3,29 +3,59 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"time"
+
+	"github.com/ewielguszewski/gator/internal/database"
 )
 
 func handlerAgg(s *state, cmd command) error {
-	feedURL := "https://www.wagslane.dev/index.xml"
+	if len(cmd.Args) < 1 || len(cmd.Args) > 2 {
+		return fmt.Errorf("usage: %v <time_between_reps>", cmd.Name)
+	}
 
-	feed, err := fetchFeed(context.Background(), feedURL)
+	timeBetweenReps, err := time.ParseDuration(cmd.Args[0])
 	if err != nil {
-		return fmt.Errorf("error fetching feed: %w", err)
+		return fmt.Errorf("invalid duration: %w", err)
 	}
-	fmt.Printf("Feed Title: %s\n", feed.Channel.Title)
-	fmt.Printf("Feed Link: %s\n", feed.Channel.Link)
-	fmt.Printf("Feed Description: %s\n", feed.Channel.Description)
-	fmt.Println("Feed Items:")
-	for _, item := range feed.Channel.Item {
-		fmt.Printf("- %s\n", item.Title)
-		fmt.Printf("  Link: %s\n", item.Link)
-		fmt.Printf("  Description: %s\n", item.Description)
-		fmt.Printf("  PubDate: %s\n", item.PubDate)
+
+	log.Printf("Collecting feeds every %s\n", timeBetweenReps)
+
+	ticker := time.NewTicker(timeBetweenReps)
+
+	for ; ; <-ticker.C {
+		scrapeFeeds(s)
 	}
-	// or
-	// fmt.Printf("Feed: %+v\n", feed)
+}
 
-	fmt.Println("Feed fetched successfully")
+func scrapeFeeds(s *state) {
+	feed, err := s.db.GetNextFeedToFetch(context.Background())
+	if err != nil {
+		log.Println("error fetching next feed: %w", err)
+		return
+	}
+	log.Println("Found next feed to fetch")
 
-	return nil
+	scrapeFeed(s, feed)
+}
+
+func scrapeFeed(s *state, feed database.Feed) {
+
+	_, err := s.db.MarkFeedFetched(context.Background(), feed.ID)
+	if err != nil {
+		log.Printf("error marking feed as fetched: %w", err)
+		return
+	}
+
+	feedData, err := fetchFeed(context.Background(), feed.Url)
+	if err != nil {
+		log.Printf("error fetching feed: %w", err)
+		return
+	}
+
+	for _, item := range feedData.Channel.Item {
+		fmt.Printf("Found post: %s\n", item.Title)
+	}
+
+	log.Printf("Feed %s collected, %v posts found.", feed.Name, len(feedData.Channel.Item))
 }

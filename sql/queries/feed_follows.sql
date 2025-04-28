@@ -24,3 +24,14 @@ DELETE FROM feed_follows ff
 WHERE feed_id = (SELECT id FROM feed_to_unfollow)
 AND ff.user_id = $2
 RETURNING *;
+
+-- name: MarkFeedFetched :one
+UPDATE feeds
+SET last_fetched_at = NOW(), updated_at = NOW()
+WHERE id = $1
+RETURNING *;
+
+-- name: GetNextFeedToFetch :one
+SELECT * FROM feeds
+ORDER BY last_fetched_at ASC NULLS FIRST
+LIMIT 1;
